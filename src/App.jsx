@@ -404,15 +404,19 @@ function loadScript(src) {
   });
 }
 let pyodidePromise = null;
+const PYODIDE_BASE = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/";
 function getPyodide() {
   if (!pyodidePromise) {
-    pyodidePromise = loadScript("https://cdnjs.cloudflare.com/ajax/libs/pyodide/0.23.4/pyodide.js")
-      .then(() => window.loadPyodide({ indexURL: "https://cdnjs.cloudflare.com/ajax/libs/pyodide/0.23.4/" }));
+    pyodidePromise = loadScript(PYODIDE_BASE + "pyodide.js")
+      .then(() => window.loadPyodide({ indexURL: PYODIDE_BASE }))
+      .catch(err => { pyodidePromise = null; throw err; }); // no cachear fallos: permite reintentar
   }
   return pyodidePromise;
 }
 async function runPython(code) {
-  const py = await getPyodide();
+  let py;
+  try { py = await getPyodide(); }
+  catch (e) { return { ok: false, out: "No se pudo cargar el motor de Python (Pyodide): " + String(e.message || e) }; }
   await py.runPythonAsync("import sys, io\nsys.stdout = io.StringIO()\nsys.stderr = sys.stdout");
   try {
     await py.runPythonAsync(code);
